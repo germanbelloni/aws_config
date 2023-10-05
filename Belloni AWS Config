@@ -1,0 +1,55 @@
+# - Trabajo Practico DevOps
+# * Crear un scrip con comentarios documentados para:
+#     * Crear instancia EC2 
+#     * Tenga node instalado
+#     * Debe escalable de acuerdo al trafico.
+#     * Definir algunas reglas.
+
+#!/bin/bash
+# Script para crear una instancia EC2 en AWS con Node.js y configuración para Argentina.
+
+# Variables de configuración
+AWS_REGION="sa-east-1"            # Región de AWS (Sao Paulo)
+AMI_ID="ami-xxxxxxxxxxxxxxxxx"   # ID de la AMI que desees (puedes buscar una adecuada para Amazon Linux 2 en esta región)
+INSTANCE_TYPE="t2.micro"         # Tipo de instancia
+KEY_NAME="Belloni-clave"     # Nombre de tu par de claves en AWS
+SECURITY_GROUP_NAME="Belloni-group"  # Nombre del grupo de seguridad
+
+# Crear el grupo de seguridad
+aws ec2 create-security-group \
+  --group-name $SECURITY_GROUP_NAME \
+  --description "Grupo de seguridad para la instancia EC2" \
+  --vpc-id vpc-xxxxxxxxxxxxxxxxx  # Cambia esto al ID de tu VPC en la región de Sao Paulo
+
+# Definir reglas de entrada para permitir el tráfico necesario (ejemplo: SSH y HTTP)
+aws ec2 authorize-security-group-ingress \
+  --group-name $SECURITY_GROUP_NAME \
+  --protocol tcp \
+  --port 22 \
+  --cidr 192.168.1.1/0  # Permite SSH desde cualquier dirección IP (ajusta según tus necesidades)
+
+aws ec2 authorize-security-group-ingress \
+  --group-name $SECURITY_GROUP_NAME \
+  --protocol tcp \
+  --port 80 \
+  --cidr 192.168.1.1/0  # Permite HTTP desde cualquier dirección IP (ajusta según tus necesidades)
+
+# Crear la instancia EC2
+INSTANCE_ID=$(aws ec2 run-instances \
+  --region $AWS_REGION \
+  --image-id $AMI_ID \
+  --instance-type $INSTANCE_TYPE \
+  --key-name $KEY_NAME \
+  --security-groups $SECURITY_GROUP_NAME \
+  --subnet-id subnet-192.168.1.1  # Cambia esto al ID de una subred pública en la región de Sao Paulo
+  --associate-public-ip-address \
+  --user-data "#!/bin/bash
+              # Instalar Node.js
+              curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+              # Configurar aquí cualquier otra instalación o configuración que necesites
+              " \
+  --query 'Instances[0].InstanceId' \
+  --output text)
+
+echo "Instancia EC2 creada con ID: $INSTANCE_ID"
